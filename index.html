@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaolin RAT Analysis - Lazarus Group APT</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #2980b9;
+        }
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .attack-chain {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .ioc-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .ioc-table th, .ioc-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .ioc-table th {
+            background-color: #f2f2f2;
+        }
+        .diagram {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Unmasking Kaolin RAT</h1>
+        <p>A Technical Analysis of Lazarus Group's Latest Malware</p>
+        <p><em>Published: May 2024</em></p>
+    </header>
+
+    <section>
+        <h2>Introduction</h2>
+        <p>
+            In the ever-evolving landscape of cyber threats, Advanced Persistent Threat (APT) groups continue to develop sophisticated malware to achieve their objectives. One such recent discovery is the Kaolin RAT, a Remote Access Trojan attributed to the North Korean Lazarus Group. This analysis provides a comprehensive look at Kaolin RAT, its attack chain, technical capabilities, and detection methods.
+        </p>
+    </section>
+
+    <section>
+        <h2>The Lazarus Connection</h2>
+        <p>
+            The Lazarus Group, also known as HIDDEN COBRA or APT38, is a North Korean state-sponsored threat actor known for its sophisticated cyber operations. The group has been active since at least 2009 and has been linked to numerous high-profile attacks, including the 2014 Sony Pictures hack, the 2016 Bangladesh Bank heist, and the 2017 WannaCry ransomware outbreak.
+        </p>
+        <p>
+            The Kaolin RAT represents the latest addition to the Lazarus Group's arsenal, showcasing their continued evolution and technical sophistication.
+        </p>
+    </section>
+
+    <section>
+        <h2>Initial Access: The Job Offer Lure</h2>
+        <p>
+            The Kaolin RAT attack begins with a social engineering approach that has become increasingly common for the Lazarus Group: fabricated job offers. The attackers establish rapport with targeted individuals, often those with technical backgrounds, through platforms like LinkedIn, WhatsApp, or email.
+        </p>
+        <p>
+            Once trust is established, the attackers send a malicious ISO file disguised as a VNC tool, supposedly part of the job interview process. This approach is particularly effective because:
+        </p>
+        <ol>
+            <li>ISO files can be automatically mounted in Windows 10 and later versions</li>
+            <li>This mounting process may bypass Mark-of-the-Web (MotW) protections</li>
+            <li>The victim is already primed to expect and execute the file</li>
+        </ol>
+    </section>
+
+    <section>
+        <h2>The Attack Chain: A Multi-Stage Approach</h2>
+        <p>
+            The Kaolin RAT is deployed through a sophisticated multi-stage attack chain that demonstrates the technical expertise of its developers:
+        </p>
+        <div class="attack-chain">
+            <code>ISO File → AmazonVNC.exe (choice.exe) → version.dll → iexpress.exe → aws.cfg → Shellcode → RollFling → RollSling → RollMid → Kaolin RAT → FudModule Rootkit</code>
+        </div>
+
+        <h3>Stage 1: ISO Dropper and DLL Sideloading</h3>
+        <p>
+            The ISO file contains three components:
+        </p>
+        <ul>
+            <li><code>AmazonVNC.exe</code> - A legitimate Windows application (<code>choice.exe</code>) used for DLL sideloading</li>
+            <li><code>version.dll</code> - A malicious DLL that is sideloaded by the legitimate application</li>
+            <li><code>aws.cfg</code> - An obfuscated payload (VMProtect) that downloads shellcode from the C2 server</li>
+        </ul>
+
+        <h3>Stage 2: RollFling Loader</h3>
+        <p>
+            The RollFling loader serves as the initial persistence mechanism, registered as a service. Its key feature is the use of the System Management BIOS (SMBIOS) table as a decryption key for the next stage.
+        </p>
+
+        <h3>Stage 3: RollSling Loader</h3>
+        <p>
+            RollSling executes entirely in memory to evade detection. Its primary function is to locate a binary blob containing encrypted components and configuration data.
+        </p>
+
+        <h3>Stage 4: RollMid Loader</h3>
+        <p>
+            RollMid is responsible for loading key components and establishing C2 communication. It extracts and decrypts components from the binary blob using AES encryption and decompression.
+        </p>
+
+        <h3>Stage 5: Kaolin RAT</h3>
+        <p>
+            The Kaolin RAT is the main payload with extensive remote access capabilities. It parses configuration data from the received data blob and establishes encrypted communication with its C2 server.
+        </p>
+    </section>
+
+    <section>
+        <h2>Kaolin RAT Capabilities</h2>
+        <p>The RAT supports a wide range of commands:</p>
+        <ul>
+            <li>Updating sleep intervals</li>
+            <li>File system operations (listing, modifying, deleting files)</li>
+            <li>Changing file timestamps</li>
+            <li>Process management (listing, creating, terminating)</li>
+            <li>Command execution via command line</li>
+            <li>Configuration management</li>
+            <li>File upload to C2</li>
+            <li>Network connections</li>
+            <li>File compression</li>
+            <li>Loading and executing DLLs from the C2 server</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Advanced Evasion Techniques</h2>
+        <p>The Kaolin RAT employs multiple sophisticated evasion techniques:</p>
+        
+        <h3>1. Fileless Execution</h3>
+        <p>Most components are loaded and executed directly in memory, minimizing artifacts on disk.</p>
+        
+        <h3>2. DLL Sideloading</h3>
+        <p>The use of legitimate Windows applications to load malicious DLLs helps bypass security controls.</p>
+        
+        <h3>3. Encryption and Obfuscation</h3>
+        <p>The malware uses AES encryption, VMProtect obfuscation, and XOR encryption with SMBIOS data.</p>
+        
+        <h3>4. Steganography</h3>
+        <p>Data is hidden within images retrieved from the C2 server.</p>
+        
+        <h3>5. Legitimate-Looking Network Traffic</h3>
+        <p>URLs are constructed with dictionary words to appear legitimate.</p>
+    </section>
+
+    <section>
+        <h2>YARA Rules</h2>
+        <p>We've developed YARA rules to detect various components of the Kaolin RAT attack chain:</p>
+        <pre><code>rule Kaolin_RAT {
+    meta:
+        description = "Detects Kaolin RAT malware used by Lazarus Group"
+        author = "Security Researcher"
+        date = "2024-05-01"
+        hash = "a75399f9492a8d2683d4406fa3e1320e84010b3affdff0b8f2444ac33ce3e690"
+    
+    strings:
+        // Strings related to C2 communication
+        $s1 = "SendDataFromUrl" ascii wide
+        $s2 = "GetImageFromUrl" ascii wide
+        $s3 = "GetHtmlFromUrl" ascii wide
+        $s4 = "curl_global_cleanup" ascii wide
+        $s5 = "curl_global_init" ascii wide
+        
+        // Exported functions
+        $export1 = "_DoMyFunc" ascii wide
+        $export2 = "_DoMyFunc2" ascii wide
+        $export3 = "_DoMyThread" ascii wide
+        $export4 = "_DoMyCommandWork" ascii wide
+        
+        // Dictionary-based URL generation
+        $dict = { 83 C0 04 89 45 ?? 8B 45 ?? 8B 00 89 45 ?? 8B 45 ?? 83 C0 04 89 45 ?? }
+        
+    condition:
+        uint16(0) == 0x5A4D and
+        (3 of ($s*) or 2 of ($export*)) and $dict
+}</code></pre>
+    </section>
+
+    <section>
+        <h2>Indicators of Compromise (IOCs)</h2>
+        <h3>File Hashes</h3>
+        <table class="ioc-table">
+            <tr>
+                <th>Component</th>
+                <th>SHA-256 Hash</th>
+            </tr>
+            <tr>
+                <td>ISO Dropper</td>
+                <td><code>b8a4c1792ce2ec15611932437a4a1a7e43b7c3783870afebf6eae043bcfade30</code></td>
+            </tr>
+            <tr>
+                <td>RollFling</td>
+                <td><code>a3fe80540363ee2f1216ec3d01209d7c517f6e749004c91901494fb94852332b</code></td>
+            </tr>
+            <tr>
+                <td>RollSling</td>
+                <td><code>e68ff1087c45a1711c3037dad427733ccb1211634d070b03cb3a3c7e836d210f</code></td>
+            </tr>
+            <tr>
+                <td>RollMid</td>
+                <td><code>9a4bc647c09775ed633c134643d18a0be8f37c21afa3c0f8adf41e038695643e</code></td>
+            </tr>
+            <tr>
+                <td>Kaolin RAT</td>
+                <td><code>a75399f9492a8d2683d4406fa3e1320e84010b3affdff0b8f2444ac33ce3e690</code></td>
+            </tr>
+        </table>
+
+        <h3>Network Indicators</h3>
+        <table class="ioc-table">
+            <tr>
+                <th>Type</th>
+                <th>Indicator</th>
+            </tr>
+            <tr>
+                <td>C2 Domain</td>
+                <td><code>henraux.com</code></td>
+            </tr>
+            <tr>
+                <td>C2 URL Path</td>
+                <td><code>/sitemaps/about/about.asp</code></td>
+            </tr>
+        </table>
+    </section>
+
+    <section>
+        <h2>Conclusion</h2>
+        <p>
+            The Kaolin RAT represents a sophisticated malware strain used by the Lazarus Group in targeted attacks. Its multi-stage deployment, advanced evasion techniques, and extensive capabilities demonstrate the high level of technical expertise of its developers.
+        </p>
+        <p>
+            The use of SMBIOS data as a decryption key indicates a highly targeted approach, suggesting that victims are carefully selected before the attack is launched. This level of sophistication highlights the continued evolution of APT groups and the need for advanced security measures to detect and mitigate such threats.
+        </p>
+    </section>
+
+    <div class="footer">
+        <p>All analysis was conducted in a controlled environment. The IOCs and YARA rules provided are intended for defensive purposes only.</p>
+        <p>© 2024 Security Research Team</p>
+    </div>
+</body>
+</html>
